@@ -13,8 +13,9 @@ Professional full-stack web app for expense/account tracking with category manag
 - User authentication:
   - Create account
   - Login / logout
+  - Optional OTP-based login
   - Change password
-  - Forgot password / reset password
+  - Forgot password / reset password with OTP
   - Separate data per user account
 - Monthly stat cards with total expenditure
 - Visual charts:
@@ -60,6 +61,10 @@ ipconfig getifaddr en0
 - `POST /api/auth/change-password`
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
+- `POST /api/auth/request-login-otp`
+- `POST /api/auth/verify-login-otp`
+- `POST /api/auth/request-reset-otp`
+- `POST /api/auth/reset-password-otp`
 - `GET /api/categories`
 - `POST /api/categories`
 - `PUT /api/categories/:id`

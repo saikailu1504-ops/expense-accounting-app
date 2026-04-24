@@ -181,6 +181,7 @@ function setAuthMode(mode) {
   document.getElementById("auth-submit").textContent = registerMode ? "Create account" : "Login";
   document.getElementById("toggle-auth-mode").textContent = registerMode ? "Back to login" : "Create account";
   document.getElementById("open-reset-box").classList.toggle("hidden", registerMode);
+  document.getElementById("open-login-otp-box").classList.toggle("hidden", registerMode);
   document.getElementById("full-name-wrap").classList.toggle("hidden", !registerMode);
   document.getElementById("auth-fullname").toggleAttribute("required", registerMode);
 }
@@ -188,6 +189,13 @@ function setAuthMode(mode) {
 function toggleResetBox(show) {
   document.getElementById("auth-form").classList.toggle("hidden", show);
   document.getElementById("reset-form").classList.toggle("hidden", !show);
+  document.getElementById("login-otp-form").classList.add("hidden");
+}
+
+function toggleLoginOtpBox(show) {
+  document.getElementById("auth-form").classList.toggle("hidden", show);
+  document.getElementById("login-otp-form").classList.toggle("hidden", !show);
+  document.getElementById("reset-form").classList.add("hidden");
 }
 
 async function checkSession() {
@@ -243,21 +251,70 @@ async function init() {
       document.getElementById("reset-token").value = "";
     });
 
+    document.getElementById("open-login-otp-box").addEventListener("click", () => {
+      toggleLoginOtpBox(true);
+      document.getElementById("login-otp-form").reset();
+      document.getElementById("otp-login-request-id").value = "";
+    });
+
+    document.getElementById("cancel-login-otp-box").addEventListener("click", () => {
+      toggleLoginOtpBox(false);
+      document.getElementById("login-otp-form").reset();
+    });
+
     document.getElementById("cancel-reset-box").addEventListener("click", () => {
       toggleResetBox(false);
       document.getElementById("reset-form").reset();
     });
 
+    document.getElementById("generate-login-otp").addEventListener("click", async () => {
+      const username = document.getElementById("otp-login-username").value.trim();
+      const password = document.getElementById("otp-login-password").value;
+      if (!username || !password) return;
+      const result = await api("/api/auth/request-login-otp", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+      });
+      document.getElementById("otp-login-request-id").value = result.otpRequestId || "";
+      if (result.otpCode) {
+        document.getElementById("otp-login-code").value = result.otpCode;
+      }
+      showToast("Login OTP generated.");
+    });
+
+    document.getElementById("login-otp-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const otpRequestId = document.getElementById("otp-login-request-id").value.trim();
+      const otpCode = document.getElementById("otp-login-code").value.trim();
+      if (!otpRequestId || !otpCode) {
+        showToast("Generate OTP first.");
+        return;
+      }
+      state.user = await api("/api/auth/verify-login-otp", {
+        method: "POST",
+        body: JSON.stringify({ otpRequestId, otpCode })
+      });
+      showToast("Logged in with OTP.");
+      setViewAuthenticated(true);
+      toggleLoginOtpBox(false);
+      document.getElementById("login-otp-form").reset();
+      setAuthMode("login");
+      await refreshAll();
+    });
+
     document.getElementById("generate-reset-token").addEventListener("click", async () => {
       const username = document.getElementById("reset-username").value.trim();
       if (!username) return;
-      const result = await api("/api/auth/forgot-password", {
+      const result = await api("/api/auth/request-reset-otp", {
         method: "POST",
         body: JSON.stringify({ username })
       });
-      if (result.resetToken) {
-        document.getElementById("reset-token").value = result.resetToken;
-        showToast("Reset token generated and filled.");
+      if (result.otpRequestId) {
+        document.getElementById("reset-request-id").value = result.otpRequestId;
+      }
+      if (result.otpCode) {
+        document.getElementById("reset-token").value = result.otpCode;
+        showToast("Reset OTP generated and filled.");
       } else {
         showToast(result.message || "Reset instructions generated.");
       }
@@ -265,12 +322,16 @@ async function init() {
 
     document.getElementById("reset-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const resetToken = document.getElementById("reset-token").value.trim();
+      const otpRequestId = document.getElementById("reset-request-id").value.trim();
+      const otpCode = document.getElementById("reset-token").value.trim();
       const newPassword = document.getElementById("reset-new-password").value;
-      if (!resetToken || !newPassword) return;
-      const result = await api("/api/auth/reset-password", {
+      if (!otpRequestId || !otpCode || !newPassword) {
+        showToast("Generate OTP first.");
+        return;
+      }
+      const result = await api("/api/auth/reset-password-otp", {
         method: "POST",
-        body: JSON.stringify({ resetToken, newPassword })
+        body: JSON.stringify({ otpRequestId, otpCode, newPassword })
       });
       showToast(result.message || "Password reset complete.");
       toggleResetBox(false);

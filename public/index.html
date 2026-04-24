@@ -31,16 +31,31 @@
           <div class="form-actions full-width">
             <button type="submit" class="btn-primary" id="auth-submit">Login</button>
             <button type="button" id="toggle-auth-mode" class="btn-secondary">Create account</button>
+            <button type="button" id="open-login-otp-box" class="btn-secondary">Login with OTP</button>
             <button type="button" id="open-reset-box" class="btn-secondary">Forgot password?</button>
+          </div>
+        </form>
+        <form id="login-otp-form" class="grid-form hidden">
+          <label>Username <input type="text" id="otp-login-username" minlength="3" required /></label>
+          <label>Password <input type="password" id="otp-login-password" minlength="6" required /></label>
+          <div class="form-actions full-width">
+            <button type="button" id="generate-login-otp" class="btn-primary">Generate OTP</button>
+          </div>
+          <label>OTP Code <input type="text" id="otp-login-code" required /></label>
+          <input type="hidden" id="otp-login-request-id" />
+          <div class="form-actions full-width">
+            <button type="submit" class="btn-primary">Verify OTP Login</button>
+            <button type="button" id="cancel-login-otp-box" class="btn-secondary">Cancel</button>
           </div>
         </form>
         <form id="reset-form" class="grid-form hidden">
           <label>Username <input type="text" id="reset-username" minlength="3" required /></label>
           <div class="form-actions full-width">
-            <button type="button" id="generate-reset-token" class="btn-primary">Generate Reset Token</button>
+            <button type="button" id="generate-reset-token" class="btn-primary">Generate Reset OTP</button>
           </div>
-          <label>Reset Token <input type="text" id="reset-token" required /></label>
+          <label>Reset OTP <input type="text" id="reset-token" required /></label>
           <label>New Password <input type="password" id="reset-new-password" minlength="6" required /></label>
+          <input type="hidden" id="reset-request-id" />
           <div class="form-actions full-width">
             <button type="submit" class="btn-primary">Reset Password</button>
             <button type="button" id="cancel-reset-box" class="btn-secondary">Cancel</button>

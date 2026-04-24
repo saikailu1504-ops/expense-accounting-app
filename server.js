@@ -26,8 +26,10 @@ const DEFAULT_CATEGORIES = [
 const CURRENCIES = ["USD", "EUR", "GBP", "INR", "JPY", "AUD", "CAD", "SGD", "OMR"];
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const RESET_TOKEN_TTL_MS = 1000 * 60 * 15;
+const OTP_TTL_MS = 1000 * 60 * 5;
 const sessions = new Map();
 const passwordResetTokens = new Map();
+const otpRequests = new Map();
 
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -191,6 +193,45 @@ function consumePasswordResetToken(token) {
   return reset;
 }
 
+function generateOtpCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function createOtpRequest(userId, purpose) {
+  const requestId = crypto.randomBytes(16).toString("hex");
+  const otpCode = generateOtpCode();
+  otpRequests.set(requestId, {
+    userId,
+    purpose,
+    otpCode,
+    attempts: 0,
+    expiresAt: Date.now() + OTP_TTL_MS
+  });
+  return { requestId, otpCode };
+}
+
+function consumeOtpRequest(requestId, otpCode, purpose) {
+  const request = otpRequests.get(requestId);
+  if (!request) return { ok: false, error: "Invalid OTP request." };
+  if (request.expiresAt <= Date.now()) {
+    otpRequests.delete(requestId);
+    return { ok: false, error: "OTP expired." };
+  }
+  if (request.purpose !== purpose) {
+    return { ok: false, error: "OTP purpose mismatch." };
+  }
+  request.attempts += 1;
+  if (request.attempts > 5) {
+    otpRequests.delete(requestId);
+    return { ok: false, error: "Too many invalid attempts." };
+  }
+  if (request.otpCode !== String(otpCode || "")) {
+    return { ok: false, error: "Invalid OTP code." };
+  }
+  otpRequests.delete(requestId);
+  return { ok: true, userId: request.userId };
+}
+
 function serveStaticFile(filePath, res) {
   const safePath = path.normalize(filePath).replace(/^(\.\.[/\\])+/, "");
   const absolutePath = path.join(PUBLIC_DIR, safePath);
@@ -202,6 +243,14 @@ function serveStaticFile(filePath, res) {
 
   fs.readFile(absolutePath, (err, content) => {
     if (err) {
+      const requestedExt = path.extname(safePath);
+      // Only SPA-fallback for clean routes (e.g. /dashboard), not for missing assets.
+      if (requestedExt) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Asset not found");
+        return;
+      }
+
       fs.readFile(path.join(PUBLIC_DIR, "index.html"), (indexErr, indexContent) => {
         if (indexErr) {
           res.writeHead(404);
@@ -299,6 +348,33 @@ async function handleApi(req, res, urlObj) {
     return sendJson(res, 200, { id: user.id, username: user.username, fullName: user.fullName });
   }
 
+  if (req.method === "POST" && pathname === "/api/auth/request-login-otp") {
+    const body = await parseBody(req);
+    const username = (body.username || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const user = db.users.find((u) => u.username === username);
+    if (!user || !verifyPassword(password, user.passwordSalt, user.passwordHash)) {
+      return sendJson(res, 401, { error: "Invalid username or password." });
+    }
+    const otp = createOtpRequest(user.id, "login");
+    return sendJson(res, 200, {
+      message: "OTP generated.",
+      otpRequestId: otp.requestId,
+      otpCode: otp.otpCode,
+      expiresInMinutes: Math.floor(OTP_TTL_MS / 60000)
+    });
+  }
+
+  if (req.method === "POST" && pathname === "/api/auth/verify-login-otp") {
+    const body = await parseBody(req);
+    const result = consumeOtpRequest(body.otpRequestId, body.otpCode, "login");
+    if (!result.ok) return sendJson(res, 400, { error: result.error });
+    const user = db.users.find((u) => u.id === result.userId);
+    if (!user) return sendJson(res, 404, { error: "User not found." });
+    createSession(res, user.id);
+    return sendJson(res, 200, { id: user.id, username: user.username, fullName: user.fullName });
+  }
+
   if (req.method === "POST" && pathname === "/api/auth/forgot-password") {
     const body = await parseBody(req);
     const username = (body.username || "").trim().toLowerCase();
@@ -314,6 +390,42 @@ async function handleApi(req, res, urlObj) {
       resetToken,
       expiresInMinutes: Math.floor(RESET_TOKEN_TTL_MS / 60000)
     });
+  }
+
+  if (req.method === "POST" && pathname === "/api/auth/request-reset-otp") {
+    const body = await parseBody(req);
+    const username = (body.username || "").trim().toLowerCase();
+    const user = db.users.find((u) => u.username === username);
+    if (!user) {
+      return sendJson(res, 200, {
+        message: "If the username exists, reset OTP instructions have been generated."
+      });
+    }
+    const otp = createOtpRequest(user.id, "reset");
+    return sendJson(res, 200, {
+      message: "Reset OTP generated.",
+      otpRequestId: otp.requestId,
+      otpCode: otp.otpCode,
+      expiresInMinutes: Math.floor(OTP_TTL_MS / 60000)
+    });
+  }
+
+  if (req.method === "POST" && pathname === "/api/auth/reset-password-otp") {
+    const body = await parseBody(req);
+    const newPassword = String(body.newPassword || "");
+    if (newPassword.length < 6) {
+      return sendJson(res, 400, { error: "New password must be at least 6 characters." });
+    }
+    const result = consumeOtpRequest(body.otpRequestId, body.otpCode, "reset");
+    if (!result.ok) return sendJson(res, 400, { error: result.error });
+    const user = db.users.find((u) => u.id === result.userId);
+    if (!user) return sendJson(res, 404, { error: "User not found." });
+    const pwd = hashPassword(newPassword);
+    user.passwordSalt = pwd.salt;
+    user.passwordHash = pwd.hash;
+    clearAllUserSessions(user.id);
+    writeDb(db);
+    return sendJson(res, 200, { message: "Password reset successful. Please log in again." });
   }
 
   if (req.method === "POST" && pathname === "/api/auth/reset-password") {
