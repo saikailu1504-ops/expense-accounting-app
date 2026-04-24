@@ -1,0 +1,54 @@
+{
+  "categories": [
+    {
+      "id": "cat-food",
+      "name": "Food & Dining"
+    },
+    {
+      "id": "cat-transport",
+      "name": "Transport"
+    },
+    {
+      "id": "cat-housing",
+      "name": "Housing"
+    },
+    {
+      "id": "cat-utilities",
+      "name": "Utilities"
+    },
+    {
+      "id": "cat-health",
+      "name": "Health"
+    },
+    {
+      "id": "cat-entertainment",
+      "name": "Entertainment"
+    },
+    {
+      "id": "cat-shopping",
+      "name": "Shopping"
+    },
+    {
+      "id": "cat-education",
+      "name": "Education"
+    },
+    {
+      "id": "cat-travel",
+      "name": "Travel"
+    },
+    {
+      "id": "cat-misc",
+      "name": "Miscellaneous"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp_1777032333332_bq09qt",
+      "amount": 50,
+      "date": "2026-04-24",
+      "categoryId": "cat-food",
+      "currency": "USD",
+      "description": "Had food at foodlands"
+    }
+  ]
+}

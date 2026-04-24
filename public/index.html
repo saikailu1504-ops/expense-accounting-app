@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense & Accounts Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header class="header">
+      <div class="header-row">
+        <div>
+          <h1>Expense & Accounts Manager</h1>
+          <p>Track spending, manage categories, and review monthly trends.</p>
+        </div>
+        <div id="user-panel" class="hidden">
+          <span id="welcome-user"></span>
+          <button id="logout-btn" class="btn-secondary">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="auth-view" class="layout">
+      <section class="card auth-card">
+        <h2 id="auth-title">Login</h2>
+        <form id="auth-form" class="grid-form">
+          <label>Username <input type="text" id="auth-username" required minlength="3" /></label>
+          <label>Password <input type="password" id="auth-password" required minlength="6" /></label>
+          <label id="full-name-wrap" class="hidden">Full Name <input type="text" id="auth-fullname" /></label>
+          <div class="form-actions full-width">
+            <button type="submit" class="btn-primary" id="auth-submit">Login</button>
+            <button type="button" id="toggle-auth-mode" class="btn-secondary">Create account</button>
+            <button type="button" id="open-reset-box" class="btn-secondary">Forgot password?</button>
+          </div>
+        </form>
+        <form id="reset-form" class="grid-form hidden">
+          <label>Username <input type="text" id="reset-username" minlength="3" required /></label>
+          <div class="form-actions full-width">
+            <button type="button" id="generate-reset-token" class="btn-primary">Generate Reset Token</button>
+          </div>
+          <label>Reset Token <input type="text" id="reset-token" required /></label>
+          <label>New Password <input type="password" id="reset-new-password" minlength="6" required /></label>
+          <div class="form-actions full-width">
+            <button type="submit" class="btn-primary">Reset Password</button>
+            <button type="button" id="cancel-reset-box" class="btn-secondary">Cancel</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <main id="app-view" class="layout hidden">
+      <section class="card">
+        <h2>Account Security</h2>
+        <form id="change-password-form" class="grid-form">
+          <label>Current Password <input type="password" id="current-password" minlength="6" required /></label>
+          <label>New Password <input type="password" id="new-password" minlength="6" required /></label>
+          <div class="form-actions full-width">
+            <button type="submit" class="btn-primary">Change Password</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Add / Edit Expense</h2>
+        <form id="expense-form" class="grid-form">
+          <input type="hidden" id="expense-id" />
+          <label>Date <input type="date" id="expense-date" required /></label>
+          <label>Amount <input type="number" id="expense-amount" min="0.01" step="0.01" required /></label>
+          <label>Currency <select id="expense-currency" required></select></label>
+          <label>Category <select id="expense-category" required></select></label>
+          <label class="full-width">Description <input type="text" id="expense-description" placeholder="Expense details" maxlength="150" /></label>
+          <div class="form-actions full-width">
+            <button type="submit" class="btn-primary">Save Expense</button>
+            <button type="button" id="cancel-expense-edit" class="btn-secondary hidden">Cancel Edit</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Category Management</h2>
+        <form id="category-form" class="inline-form">
+          <input type="hidden" id="category-id" />
+          <input type="text" id="category-name" placeholder="Category name" maxlength="60" required />
+          <button type="submit" class="btn-primary">Save Category</button>
+          <button type="button" id="cancel-category-edit" class="btn-secondary hidden">Cancel</button>
+        </form>
+        <ul id="category-list" class="item-list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Monthly Totals</h2>
+        <div id="monthly-cards" class="card-grid"></div>
+      </section>
+
+      <section class="card">
+        <h2>Visual Insights</h2>
+        <div class="charts">
+          <div>
+            <h3>Spend By Month</h3>
+            <canvas id="month-chart"></canvas>
+          </div>
+          <div>
+            <h3>Spend By Category</h3>
+            <canvas id="category-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Expense Ledger</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expense-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <p id="toast" class="toast hidden"></p>
+    <script src="app.js"></script>
+  </body>
+  </html>
